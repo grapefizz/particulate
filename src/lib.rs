@@ -85,19 +85,19 @@ pub fn start() {
 
     // Mouse events
     {
-        let canvas = canvas.clone();
+        let canvas_ref = canvas.clone();
         let closure = Closure::wrap(Box::new(move |event: MouseEvent| {
             MOUSE_DOWN.with(|down| *down.borrow_mut() = true);
-            paint_at_mouse(&canvas, &event);
+            paint_at_mouse(&canvas_ref, &event);
         }) as Box<dyn FnMut(_)>);
         canvas.add_event_listener_with_callback("mousedown", closure.as_ref().unchecked_ref()).unwrap();
         closure.forget();
     }
     {
-        let canvas = canvas.clone();
+        let canvas_ref = canvas.clone();
         let closure = Closure::wrap(Box::new(move |event: MouseEvent| {
             if MOUSE_DOWN.with(|down| *down.borrow()) {
-                paint_at_mouse(&canvas, &event);
+                paint_at_mouse(&canvas_ref, &event);
             }
         }) as Box<dyn FnMut(_)>);
         canvas.add_event_listener_with_callback("mousemove", closure.as_ref().unchecked_ref()).unwrap();
@@ -134,7 +134,7 @@ pub fn start() {
 }
 
 fn paint_at_mouse(canvas: &HtmlCanvasElement, event: &MouseEvent) {
-    let element = canvas.dyn_ref::<web_sys::Element>().unwrap();
+    let element: &web_sys::Element = canvas.as_ref();
     let rect = element.get_bounding_client_rect();
     let scale_x = canvas.width() as f64 / rect.width();
     let scale_y = canvas.height() as f64 / rect.height();
@@ -144,7 +144,7 @@ fn paint_at_mouse(canvas: &HtmlCanvasElement, event: &MouseEvent) {
 }
 
 fn render(ctx: &CanvasRenderingContext2d, canvas: &HtmlCanvasElement) {
-    ctx.set_fill_style_with_str("black").unwrap();
+    ctx.set_fill_style_str("black");
     ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
     WORLD.with(|w| {
         let w = w.borrow();
@@ -152,7 +152,7 @@ fn render(ctx: &CanvasRenderingContext2d, canvas: &HtmlCanvasElement) {
             for x in 0..WIDTH {
                 match w.grid[y][x] {
                     Cell::Sand => {
-                        ctx.set_fill_style_with_str("#e2c275").unwrap();
+                        ctx.set_fill_style_str("#e2c275");
                         ctx.fill_rect(
                             (x * CELL_SIZE) as f64,
                             (y * CELL_SIZE) as f64,

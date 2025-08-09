@@ -10,10 +10,12 @@
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
-        rust = pkgs.rust-bin.stable.latest.default;
+        rust = pkgs.rust-bin.stable.latest.complete.override {
+          targets = [ "wasm32-unknown-unknown" ];
+        };
       in {
         devShells.default = pkgs.mkShell {
-          buildInputs = [ rust pkgs.wasm-pack pkgs.binaryen pkgs.nodejs pkgs.python3 ];
+          buildInputs = [ rust pkgs.wasm-pack pkgs.binaryen pkgs.nodejs pkgs.python3 pkgs.lld];
           RUSTFLAGS = "-C target-feature=+atomics,+bulk-memory,+mutable-globals";
         };
       }
