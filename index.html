@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Particulate: Falling Sand</title>
+    <style>
+        html, body { height: 100%; margin: 0; background: #222; }
+        body { display: flex; align-items: center; justify-content: center; height: 100vh; }
+        canvas { background: #111; display: block; box-shadow: 0 0 16px #000; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <script type="module">
+        import init from './pkg/particulate.js';
+        init();
+    </script>
+</body>
+</html>
