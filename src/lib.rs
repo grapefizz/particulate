@@ -13,12 +13,20 @@ const CELL_SIZE: usize = 4; // Each cell is drawn as a 4x4 block
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
+    #[wasm_bindgen(js_namespace = window)]
+    fn get_brush_size() -> u32;
 }
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum Cell {
     Empty,
     Sand,
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum Tool {
+    Sand,
+    Erase,
 }
 
 pub struct World {
@@ -60,9 +68,23 @@ impl World {
         }
     }
 
-    pub fn set_sand(&mut self, x: usize, y: usize) {
-        if x < WIDTH && y < HEIGHT {
-            self.grid[y][x] = Cell::Sand;
+    pub fn paint(&mut self, x: usize, y: usize, brush: u32, tool: Tool) {
+        let r = brush as f64 / 2.0;
+        let r2 = r * r;
+        for dy in -(brush as isize)..=(brush as isize) {
+            for dx in -(brush as isize)..=(brush as isize) {
+                let nx = x as isize + dx;
+                let ny = y as isize + dy;
+                if nx >= 0 && ny >= 0 && (nx as usize) < WIDTH && (ny as usize) < HEIGHT {
+                    let dist2 = (dx as f64 + 0.5).powi(2) + (dy as f64 + 0.5).powi(2);
+                    if dist2 <= r2 {
+                        self.grid[ny as usize][nx as usize] = match tool {
+                            Tool::Sand => Cell::Sand,
+                            Tool::Erase => Cell::Empty,
+                        };
+                    }
+                }
+            }
         }
     }
 }
@@ -140,7 +162,9 @@ fn paint_at_mouse(canvas: &HtmlCanvasElement, event: &MouseEvent) {
     let scale_y = canvas.height() as f64 / rect.height();
     let x = ((event.client_x() as f64 - rect.left()) * scale_x) as usize / CELL_SIZE;
     let y = ((event.client_y() as f64 - rect.top()) * scale_y) as usize / CELL_SIZE;
-    WORLD.with(|w| w.borrow_mut().set_sand(x, y));
+    let brush = get_brush_size();
+    let tool = if event.buttons() == 2 || event.button() == 2 { Tool::Erase } else { Tool::Sand };
+    WORLD.with(|w| w.borrow_mut().paint(x, y, brush, tool));
 }
 
 fn render(ctx: &CanvasRenderingContext2d, canvas: &HtmlCanvasElement) {

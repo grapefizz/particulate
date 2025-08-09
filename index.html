@@ -10,9 +10,26 @@
     </style>
 </head>
 <body>
-    <canvas id="canvas" width="800" height="600"></canvas>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 1em;">
+        <canvas id="canvas" width="800" height="600"></canvas>
+        <label style="color: #eee; font-family: sans-serif;">
+            Brush Size:
+            <input type="range" id="brush" min="1" max="12" value="3" style="vertical-align: middle;">
+            <span id="brush-value">3</span>
+        </label>
+    </div>
     <script type="module">
         import init from './pkg/particulate.js';
+        // Show brush value
+        const brush = document.getElementById('brush');
+        const brushValue = document.getElementById('brush-value');
+        brush.addEventListener('input', () => {
+            brushValue.textContent = brush.value;
+        });
+        // Expose brush size getter for Rust
+        window.get_brush_size = () => parseInt(brush.value, 10);
+        // Prevent context menu on canvas for right click erase
+        document.getElementById('canvas').addEventListener('contextmenu', e => e.preventDefault());
         init();
     </script>
 </body>
