@@ -5,6 +5,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, MouseEvent, window};
 use std::cell::RefCell;
 use std::rc::Rc;
+use js_sys::Math;
 
 const WIDTH: usize = 200;
 const HEIGHT: usize = 150;
@@ -39,28 +40,56 @@ impl World {
     }
 
     pub fn step(&mut self) {
-        // Update from bottom up to avoid double-moving sand
+        // Randomize update order for realism
+        let mut xs: Vec<usize> = (0..WIDTH).collect();
         for y in (0..HEIGHT-1).rev() {
-            for x in 0..WIDTH {
+            // Shuffle x order each row
+            for i in (1..WIDTH).rev() {
+                let j = (Math::random() * (i as f64 + 1.0)).floor() as usize;
+                xs.swap(i, j);
+            }
+            for &x in &xs {
                 if self.grid[y][x] == Cell::Sand {
                     // Try to move down
                     if self.grid[y+1][x] == Cell::Empty {
                         self.grid[y+1][x] = Cell::Sand;
                         self.grid[y][x] = Cell::Empty;
-                    } else {
-                        // Try diagonals
-                        let mut moved = false;
-                        if x > 0 && self.grid[y+1][x-1] == Cell::Empty {
-                            self.grid[y+1][x-1] = Cell::Sand;
-                            self.grid[y][x] = Cell::Empty;
-                            moved = true;
-                        } else if x+1 < WIDTH && self.grid[y+1][x+1] == Cell::Empty {
-                            self.grid[y+1][x+1] = Cell::Sand;
-                            self.grid[y][x] = Cell::Empty;
-                            moved = true;
+                        continue;
+                    }
+                    // Try diagonals
+                    let mut blocked = true;
+                    let mut dirs = [(-1isize, 1isize), (1, 1)];
+                    if Math::random() < 0.5 {
+                        dirs.swap(0, 1);
+                    }
+                    for &(dx, dy) in &dirs {
+                        let nx = x as isize + dx;
+                        let ny = y as isize + dy;
+                        if nx >= 0 && nx < WIDTH as isize && ny < HEIGHT as isize {
+                            if self.grid[ny as usize][nx as usize] == Cell::Empty {
+                                self.grid[ny as usize][nx as usize] = Cell::Sand;
+                                self.grid[y][x] = Cell::Empty;
+                                blocked = false;
+                                break;
+                            }
                         }
-                        if moved {
-                            continue;
+                    }
+                    if !blocked { continue; }
+                    // Only roll left/right with 5% chance and only if down and both diagonals are blocked
+                    if Math::random() < 0.05 {
+                        let mut sides = [-1isize, 1];
+                        if Math::random() < 0.5 {
+                            sides.swap(0, 1);
+                        }
+                        for &dx in &sides {
+                            let nx = x as isize + dx;
+                            if nx >= 0 && nx < WIDTH as isize {
+                                if self.grid[y][nx as usize] == Cell::Empty {
+                                    self.grid[y][nx as usize] = Cell::Sand;
+                                    self.grid[y][x] = Cell::Empty;
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
@@ -141,8 +170,12 @@ pub fn start() {
     let canvas = Rc::new(canvas);
     let win2 = win.clone();
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        // Step simulation
-        WORLD.with(|w| w.borrow_mut().step());
+        // Step simulation (run multiple times per frame for speed)
+        WORLD.with(|w| {
+            let mut w = w.borrow_mut();
+            w.step();
+            w.step();
+        });
         // Render
         render(&context, &canvas);
         // Schedule next frame
